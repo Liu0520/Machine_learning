@@ -18,14 +18,16 @@ def generate_features(df , seq_len):
     features = []
     labels = []
     groups = df.groupby('user_id')
-
+    # 获取自己认为有用的列
     used_attrs = ['event_type', 'product_id', 'category_id', 'brand', 'price']
     for user_id, group in tqdm(groups):
-        # 如果用户的浏览数据量小于15，就用之前浏览的数据加入
-        if len(group) < seq_len + 1:
-            insert_rows = pd.DataFrame([group.iloc[0, :].values] * (seq_len + 1 - len(group)),columns=group.columns)
+        # 如果用户的浏览数据量小于15，就用第一次浏览的数据重复加入
+        if len(group) < seq_len :
+            insert_rows = pd.DataFrame([group.iloc[0, :].values] * (seq_len  - len(group)),columns=group.columns)
             group = insert_rows.append(group, ignore_index=True)
         for i in range(0, len(group) - seq_len):
+            # 进行分组0-15,1-14，...
+            # 充分利用数据
             seq_features = group.iloc[i:i + seq_len, :][used_attrs]
             label = group.iloc[i + seq_len, :]['product_id']
             features.append(seq_features.values.astype(float))
@@ -33,14 +35,14 @@ def generate_features(df , seq_len):
     return np.array(features), np.array(labels)
 
 
-train_df = pd.read_csv('../train.csv')
-test_df = pd.read_csv('../test.csv')
+train_df = pd.read_csv('data/train.csv')
+test_df = pd.read_csv('data/test.csv')
 
-# 填补nan
+# 填补Nan
 train_df.fillna(0, inplace=True)
 test_df.fillna(0, inplace=True)
 
-# 编码
+# 标签编码
 lbe1 = LabelEncoder()
 train_df['event_type'] = lbe1.fit_transform(train_df['event_type'].astype(str))
 test_df['event_type'] = lbe1.transform(test_df['event_type'].astype(str))
